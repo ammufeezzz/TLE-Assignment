@@ -1,7 +1,7 @@
 function User(){
     const [studentData, setStudentData] = useState([]);
-const [isForm,setIsForm]=useState(false);
-const [selectedStudent,setselectedStudent]=useState(null);
+    const [isForm,setIsForm]=useState(false);
+    const [selectedStudent,setselectedStudent]=useState(null);
 
   const fetchusers=async()=>{
     const data=await fetch("http://localhost:3000/users/getusers",{
