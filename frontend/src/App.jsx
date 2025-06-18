@@ -6,12 +6,41 @@ import { LineChart,BarChart } from '@mui/x-charts';
 
 import './App.css'
 
-function App() {
+function App({username}) {
   {/**now we will try to create the user specific page! */}
   const [activeTab, setActiveTab] = useState('contest');
   const [contestfilterDays,setContestFilterDays]=useState(30);
   const [problemFilterDays,setproblemFilterDays]=useState(7);
   const [contestData,setContestData]=useState([])
+  const [rawContestData,setRawContestData]=useState(null);
+  const [rawProblemData,setRawProblemData]=useState(null);
+
+
+
+  {/**when we switch tabs, the data rendering is slow, maybe due to excessive api calls,maybe we can fetch all the data once when the component loads and set it as props for filtering and other things! */}
+
+  const fetchdata=async()=>{
+    try{
+      const [contestRes,problemRes]=await Promise.all([
+        fetch(`https://codeforces.com/api/user.rating?handle=tourist`),
+        fetch(`https://codeforces.com/api/user.status?handle=tourist&from=1&count=100000000`)
+      ])
+      const ContestJson=await contestRes.json();
+      const ProblemJson=await problemRes.json();
+      
+      setRawContestData(ContestJson.result);
+      setRawProblemData(ProblemJson.result);
+    }catch(err){
+      console.error("error:",err);
+
+    }
+
+
+  }
+
+  useEffect(()=>{
+    fetchdata()
+  },[])
 
 
   const handleChange=(event)=>{
@@ -22,6 +51,7 @@ function App() {
     }
 
   }
+
 
   function filterdata(days,data){
     {/**this function takes num of days as a parameter and return the filtered data accordingly */}
@@ -63,9 +93,29 @@ function App() {
           </select>
 
           {/**here we send the selected filter as prop to the respecitve component! */}
+
+          {activeTab==="contest" && rawContestData &&(
+            <ContestData 
+            rawData={rawContestData} 
+            setContestData={setContestData}
+            filter_days={contestfilterDays}
+            filterdata={filterdata}
+            >
+            </ContestData>
+          )}
+          {activeTab==="problem" && rawProblemData &&(
+            <ProblemData
+            rawData={rawProblemData}
+            filter_days={problemFilterDays}
+            filterdata={filterdata}
+            >
+
+            </ProblemData>
+          )
+            
+          }
           
 
-        {activeTab==="contest"?<ContestData username={"ammufeezz"} filter_days={contestfilterDays} setContestData={setContestData} filterdata={filterdata}></ContestData>:<ProblemData username={"tourist"} filterdata={filterdata} filter_days={problemFilterDays}></ProblemData>}
 
 
 
@@ -207,61 +257,24 @@ function Stats({stats,type}) {
   );
 }
 
-function ContestData({username,filter_days,setContestData,filterdata}){
+function ContestData({rawData,filter_days,setContestData,filterdata}){
   const [tableData,setTableData]=useState([])
 
-
-  const getContestData=async()=>{
-    try{
-      const response=await fetch(`https://codeforces.com/api/user.rating?handle=${username}`);
-      if(!response.ok){
-        throw new Error("Request Failed")
-        
-      }
-
-      const data=await response.json();
-      
-      if(data.status!=='OK'){
-        throw new Error("Error Fetching Data");
-      }
-
-      const filtered=filterdata(filter_days,data.result);
-
-      setTableData(filtered);
-
-      setContestData(filtered);
-
-     {/**how do we send other data to different components? */}
-      {/**by lifting the state up? */}
-      
-
-
-
-
-
-
-
-
-
-    }catch(err){
-      console.error("error :",err);
-    }
-    {/**once we retrieve the contesr data we need to filter out in last 30,90 and 365 days   */}
-
-
-
-
-
-  }
-
+  
   useEffect(()=>{
-      getContestData()
-    },[filter_days,username])
+    console.log(rawData)
+    if(rawData){
+      const filtered=filterdata(filter_days,rawData)
+      setTableData(filtered);
+      setContestData(filtered)
+    }
+  },[filter_days,rawData])
+
   return (
     <div >
           <div className='rounded-2xl pt-6 pr-2 ring-2 ring-blue-400 '>
       <LineChart
-      xAxis={[{ data: Array.from({length:(1,tableData.length)},(_,i)=>i+1),label:"Contest No" }]}
+      xAxis={[{ data: Array.from({length:(tableData.length)},(_,i)=>i+1),label:"Contest No" }]}
       yAxis={[
         {
           id: 'y-axis-id',
@@ -324,45 +337,15 @@ function ContestData({username,filter_days,setContestData,filterdata}){
   );
 }
 
-function ProblemData({username,filterdata,filter_days}){
-
+function ProblemData({rawData,filterdata,filter_days}){
   const [problemData,setProblemData]=useState([]);
 
-  const fetchData=async()=>{
-    try{
-      const response=await fetch(`https://codeforces.com/api/user.status?handle=${username}&from=1&count=100000000`) 
-
-      if(!response.ok){
-        throw new Error("Request Failed!")
-      }
-
-      const data=await response.json();
-
-
-      if(data.status!=='OK'){
-        throw new Error("Error fetching Data")
-      }
-
-
-      const filtered=filterdata(filter_days,data.result);
-
-      console.log(filtered)
-      
-      setProblemData(filtered);
-
-
-    }catch(err){
-      console.error("error:",err);
-    }
-
-  } 
 
   const problemsSolved=problemData.filter((item)=>{
     {/**what if the user submits the same question 2 times???  */}
     return item.verdict==='OK'
   })
 
-  console.log(problemsSolved)
 
   const problemsPerCategory=problemsSolved.reduce((freq,ele)=>{
     freq[ele.problem.rating]=(freq[ele.problem.rating] || 0) + 1;
@@ -370,20 +353,24 @@ function ProblemData({username,filterdata,filter_days}){
     return freq;
   },{}) 
 
-  console.log(problemsPerCategory)
 
   const dataset = Object.entries(problemsPerCategory).map(([rating, value]) => ({
     rating,
     value,
   }));
-  
-  
-
-
 
   useEffect(()=>{
-    fetchData();
-  },[filter_days])
+    if(rawData){
+      const filtered=filterdata(filter_days,rawData);
+      setProblemData(filtered)
+    }
+  },[filter_days,rawData])
+  
+  
+
+
+
+
 
   return(
     <div className=''>
@@ -404,6 +391,7 @@ function ProblemData({username,filterdata,filter_days}){
           ]}
           height={300}
           borderRadius={20}
+          
         />
 
       </div>
