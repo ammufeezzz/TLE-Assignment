@@ -15,10 +15,13 @@
     "@mui/material": "^7.1.1",
     "@mui/x-charts": "^8.5.2",
     "@tailwindcss/vite": "^4.1.10",
+    "chartjs-chart-matrix": "^3.0.0",
     "formdata-polyfill": "^4.0.10",
     "lucide-react": "^0.515.0",
     "react": "^19.1.0",
+    "react-calendar-heatmap": "^1.10.0",
     "react-dom": "^19.1.0",
+    "react-tooltip": "^4.5.1",
     "tailwindcss": "^4.1.10"
   },
   "devDependencies": {
