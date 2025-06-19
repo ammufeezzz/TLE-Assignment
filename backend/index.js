@@ -1,5 +1,7 @@
 const express = require('express');
 const userRoutes=require('./routes/userRoutes')
+const contestRoutes=require('./routes/contestRoutes');
+const problemRoutes=require('./routes/problemRoutes')
 const {connecttomongodb} = require('./db');
 const cors = require('cors');
 
@@ -17,6 +19,8 @@ const port=3000;
 
 
 app.use('/users',userRoutes)
+app.use('/contests',contestRoutes)
+app.use('/problems',problemRoutes)
 
 
 app.listen(port, () => {

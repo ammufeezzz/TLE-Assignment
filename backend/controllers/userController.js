@@ -1,4 +1,6 @@
 const User = require('../models/userModel');
+const Contest=require('../models/contestModel');
+const Problem=require('../models/problemModel')
 
 
 //this first API endpoint will allow to add users!
@@ -7,22 +9,26 @@ async function addUser(req,res){
     const {name,email,Phone_No,CF_Handle}=req.body;
 
     {/** once we get the data we send a request to the cf api, to fetch details regarding rating and max_rating */}
-    const response=await fetch(`https://codeforces.com/api/user.info?handles=${CF_Handle}`)
-
-    if(!response.ok){
-        return res.status(400).json({error:"Failed to fetch Codeforces data! "})
-    }
-    const data=await response.json()
-
-    if(! data.status==='0K'  || data.result.length === 0){
-        res.status(400).json({error:'Invalid Codeforced Credentials'})
-    }
+    {/**we can get data of a particularr user at once and store it in the db  */}
+    const [infoRes, contestRes, problemRes] = await Promise.all([
+        fetch(`https://codeforces.com/api/user.info?handles=${CF_Handle}`),
+        fetch(`https://codeforces.com/api/user.rating?handle=${CF_Handle}`),
+        fetch(`https://codeforces.com/api/user.status?handle=${CF_Handle}&from=1&count=100000000`)
+    ]);
 
 
-    const rating=data.result[0].rating;
-    const max_rating=data.result[0].maxRating;
+    const infoJson=await infoRes.json();
+    const contestJson=await contestRes.json();
+    const problemJson=await problemRes.json();
 
-
+    const rating=infoJson.result[0].rating;
+    const max_rating=infoJson.result[0].maxRating;
+    const First_Name=infoJson.result[0].firstName;
+    const Last_Name=infoJson.result[0].lastName;
+    const Country=infoJson.result[0].country;
+    const Rank=infoJson.result[0].rank;
+    const Image_Url=infoJson.result[0].titlePhoto;
+    const Date_Joined=(new Date (infoJson.result[0].registrationTimeSeconds*1000)).toLocaleDateString();
 
     {/**now we can insert all the data into the db */}
     try{
@@ -32,15 +38,55 @@ async function addUser(req,res){
             Phone_No:parseInt(Phone_No),
             CF_Handle:CF_Handle,
             Current_Rating:rating,
-            Max_Rating:max_rating
-
-
-
-
+            Max_Rating:max_rating,
+            First_Name:First_Name,
+            Last_Name:Last_Name,
+            Country:Country,
+            Rank:Rank,
+            Image_Url:Image_Url,
+            Date_Joined:Date_Joined
         })
-        res.status(201).json({message:"User added succesfully"})
+
+        {/**the thing with contests data is that it is pretty big  */}
+
+        const allContests=contestJson.result.map((c)=>({
+            contestName: c.contestName,
+            rank: parseInt(c.rank),
+            oldRating: parseInt(c.oldRating),
+            newRating: parseInt(c.newRating),
+            ratingChange: parseInt(c.newRating - c.oldRating),
+            contestId: parseInt(c.contestId),
+            Contest_Date: parseInt(c.ratingUpdateTimeSeconds),
+            user: newuser._id
+        }))
+
+        
+
+        await Contest.insertMany(allContests)
+
+
+        const allProblems=problemJson.result.map((problem)=>({
+            contestId:parseInt(problem.contestId),
+            id:parseInt(problem.id),
+            Submission_Date:parseInt(problem.creationTimeSeconds),
+            Rating:problem.problem.rating,
+            user:newuser._id,
+            Verdict:problem.verdict
+
+
+        }))
+
+        await Problem.insertMany(allProblems)
+
+
+
+        
+
+        res.status(201).json({message:"User details added succesfully"})
     }catch(err){
         res.status(400).json({error:err.message})
+
+
 
 
 

@@ -7,6 +7,13 @@ const userSchema = new mongoose.Schema({
     CF_Handle: String,
     Current_Rating:Number,
     Max_Rating:Number,
+    First_Name:String,
+    Last_Name:String,
+    Rank:String,
+    Country:String,
+    Date_Joined:String,
+    Image_Url:String
+
 });
 
 

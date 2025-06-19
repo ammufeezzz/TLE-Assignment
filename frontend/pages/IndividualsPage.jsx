@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { ChartNoAxesCombined,ChartNoAxesColumnDecreasing,SquarePen,Trash2 } from 'lucide-react';
-import User from '../images/user.png'
-
+import { ChartNoAxesCombined,ChartNoAxesColumnDecreasing } from 'lucide-react';
 import { LineChart,BarChart } from '@mui/x-charts';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css'; 
 import ReactTooltip from 'react-tooltip';
+import { useParams } from 'react-router-dom';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
+import LinearProgress from '@mui/material/LinearProgress';
 
 
 
-import './App.css'
 
-function App({username}) {
+
+function IndividualStudent() {
   {/**now we will try to create the user specific page! */}
   const [activeTab, setActiveTab] = useState('contest');
   const [contestfilterDays,setContestFilterDays]=useState(30);
@@ -19,19 +21,27 @@ function App({username}) {
   const [contestData,setContestData]=useState([])
   const [rawContestData,setRawContestData]=useState(null);
   const [rawProblemData,setRawProblemData]=useState(null);
+  const [loading,setLoading]=useState(true)
+  const {username}= useParams()
 
 
 
   {/**when we switch tabs, the data rendering is slow, maybe due to excessive api calls,maybe we can fetch all the data once when the component loads and set it as props for filtering and other things! */}
 
+
+  {/**right now on evry profile click, we are hitting the API, this reduces the efficiency of our app and is generally a very bad practice  */}
+
   const fetchdata=async()=>{
+    setLoading(true);
     try{
       const [contestRes,problemRes]=await Promise.all([
-        fetch(`https://codeforces.com/api/user.rating?handle=jiangly`),
-        fetch(`https://codeforces.com/api/user.status?handle=jiangly&from=1&count=100000000`)
+        fetch(`https://codeforces.com/api/user.rating?handle=${username}`),
+        fetch(`https://codeforces.com/api/user.status?handle=${username}&from=1&count=100000000`)
       ])
       const ContestJson=await contestRes.json();
       const ProblemJson=await problemRes.json();
+
+      setLoading(false);
       
       setRawContestData(ContestJson.result);
       setRawProblemData(ProblemJson.result);
@@ -74,9 +84,22 @@ function App({username}) {
 
   return (
     <div className='mx-12 mt-8 flex items-stretch font-mono space-x-12'>
+
       <div className='flex flex-col space-y-10 max-w-[380px]'>
-        <UserCard username={"ammufeezz"}></UserCard>
-        <Stats stats={contestData} type={activeTab} filter_days={problemFilterDays}></Stats>
+
+
+        <UserCard username={username}></UserCard>
+        {loading?
+            <Box sx={{ display: 'flex' }}>
+              <CircularProgress />
+            </Box>:
+            <>
+            <Stats stats={contestData} type={activeTab} filter_days={problemFilterDays}></Stats>
+            </>
+        }
+        
+
+        
 
 
       </div>
@@ -104,7 +127,15 @@ function App({username}) {
 
           {/**here we send the selected filter as prop to the respecitve component! */}
 
+          {loading?
+               <Box sx={{ width: '100%' }}>
+                <LinearProgress />
+              </Box>:
+          ""
+          }
+
           {activeTab==="contest" && rawContestData &&(
+            
             <ContestData 
             rawData={rawContestData} 
             setContestData={setContestData}
@@ -208,10 +239,10 @@ const titleToColorClass = {
             <img src={userData.titlePhoto} className='w-full h-full rounded-full'/>
           </div>
         <span className='font-bold text-2xl'>{userData.firstName} {userData.lastName}</span>
-        <span className={`${titleToColorClass[userData.rank]}`}>@<a href=''>{username}</a> <br></br> ({userData.rank})</span>
+        <span className={`${titleToColorClass[userData.rank]} text-center`}>@<a href=''>{username}</a> ({userData.rank})</span>
         <div className='flex space-x-6 text-sm'>
-          <span className='rounded-2xl bg-zinc-300 px-2 py-1 font-bold'>Country:{userData.country}</span>
-          <span className='rounded-2xl bg-zinc-300 px-2 py-1 font-medium'>Joined:{changedate(userData.registrationTimeSeconds
+          <span className='rounded-2xl bg-zinc-300 px-2 py-1 font-bold text-center'>Country:{userData.country}</span>
+          <span className='rounded-2xl bg-zinc-300 px-2 py-1 font-medium text-center'>Joined:{changedate(userData.registrationTimeSeconds
 )}</span>
         </div>
         <span className='text-sm font-semibold'>Contest Rating: {userData.rating} (max: {userData.maxRating})</span>
@@ -523,4 +554,4 @@ function ProblemData({rawData,filterdata,filter_days,setContestData}){
 
 
 
-export default App
+export default IndividualStudent

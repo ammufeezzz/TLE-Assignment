@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
-import { ChartNoAxesCombined,ChartNoAxesColumnDecreasing,SquarePen,Trash2 } from 'lucide-react';
+import { SquarePen,Trash2,Eye } from 'lucide-react';
 import User from '../images/user.png'
-
-import { LineChart,BarChart } from '@mui/x-charts';
-import CalendarHeatmap from 'react-calendar-heatmap';
-import 'react-calendar-heatmap/dist/styles.css'; 
-import ReactTooltip from 'react-tooltip';
+import { useNavigate } from 'react-router-dom';
+import Tooltip from '@mui/material/Tooltip';
 
 
 
-import './App.css'
 
-function App() {
+
+
+
+
+function Users() {
 const [studentData, setStudentData] = useState([]);
 const [isForm,setIsForm]=useState(false);
 const [selectedStudent,setselectedStudent]=useState(null);
+const navigate = useNavigate();
 
   const fetchusers=async()=>{
     const data=await fetch("http://localhost:3000/users/getusers",{
@@ -68,7 +69,7 @@ const [selectedStudent,setselectedStudent]=useState(null);
 
       </div>
       <div className='mt-4'>
-        <StudentTable data={studentData} onUpdate={updateStudent} fetchusers={fetchusers} ></StudentTable>
+        <StudentTable data={studentData} onUpdate={updateStudent} fetchusers={fetchusers} navigate={navigate} ></StudentTable>
       </div>
       {/**the form will only be rendered when the user wants to add a student */}
       {isForm&&<RenderForm initialData={selectedStudent} closeForm={() => setIsForm(false)} fetchusers={fetchusers} />}
@@ -79,7 +80,7 @@ const [selectedStudent,setselectedStudent]=useState(null);
   )
 }
 
-function StudentTable({data,onUpdate,fetchusers}){
+function StudentTable({data,onUpdate,fetchusers,navigate}){
 
 
   const handleDelete=async(id)=>{
@@ -103,6 +104,8 @@ function StudentTable({data,onUpdate,fetchusers}){
 
 
 
+
+
   return (
     <div className=' rounded-lg shadow-xl bg-white '>
 
@@ -119,7 +122,7 @@ function StudentTable({data,onUpdate,fetchusers}){
       </thead>
       <tbody className='divide-y divide-slate-400'>
         {data.map((item, index) => (
-          <tr key={index}  >
+          <tr key={index}   >
             <td className='px-3 py-2 '>{item.name}</td>
             <td className='px-3 py-2'>{item.email}</td>
             <td className='px-3 py-2'>{item.Phone_No}</td>
@@ -129,6 +132,12 @@ function StudentTable({data,onUpdate,fetchusers}){
             <td className='px-3 py-2 space-x-3'>
               <button className='text-blue-600 hover:text-blue-900 cursor-pointer' onClick={()=>onUpdate(item)}><SquarePen className='w-4 h-4'></SquarePen></button>
               <button className='text-red-600 hover:text-red-900 cursor-pointer' onClick={()=>handleDelete(item._id)} ><Trash2 className='w-4 h-4'></Trash2></button>
+              <Tooltip title="View More details">
+                <button className='hover:scale-110' onClick={()=>navigate(`/student/${item.CF_Handle}`, { state: { username: item.CF_Handle } })}  >
+                  <Eye className='w-4 h-4'></Eye>
+                </button>
+                
+              </Tooltip>
             </td>
           </tr>
         ))}
@@ -268,4 +277,4 @@ return (
 
 }
 
-export default App
+export default Users
