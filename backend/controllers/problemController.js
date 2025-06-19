@@ -81,7 +81,7 @@ async function problemStats(req,res){
         problemsSolved:problemsSolved.length,
         averageProblemRating:Math.round((averageProblemRating/totalSolved)/100)*100,
         averageProblemsPerDay:(problemsSolved.length/value).toFixed(1),
-        maxDifficult:Math.max(...maxProblemRating),
+        maxDifficult:Math.max(...maxProblemRating)?Math.max(...maxProblemRating):0,
         submissionsData:Object.fromEntries(submissionsData),
         problemsPerCategory:dataset
     })

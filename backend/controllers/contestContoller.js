@@ -33,7 +33,7 @@ async function contestStats(req,res){
 
     return res.json({
         contestsAttended:filteredData.length,
-        averageChange:averageChange,
+        averageChange:Math.floor(averageChange),
         bestRatingGain:bestRatingGain,
         worstRatingDrop:worstRatingDrop,
         rawData:filteredData

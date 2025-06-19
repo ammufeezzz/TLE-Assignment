@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const problemSchema=new mongoose.Schema({
-    contestId:Number,
+    contestId:String,
     id:Number,
     Submission_Date:Number,
     Rating:String,

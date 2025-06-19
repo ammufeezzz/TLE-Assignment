@@ -66,7 +66,7 @@ async function addUser(req,res){
 
 
         const allProblems=problemJson.result.map((problem)=>({
-            contestId:parseInt(problem.contestId),
+            contestId:problem.contestId,
             id:parseInt(problem.id),
             Submission_Date:parseInt(problem.creationTimeSeconds),
             Rating:problem.problem.rating,

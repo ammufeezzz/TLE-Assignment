@@ -35,16 +35,19 @@ function IndividualStudent() {
     setLoading(true);
     try{
       const [contestRes,problemRes]=await Promise.all([
-        fetch(`https://codeforces.com/api/user.rating?handle=${username}`),
-        fetch(`https://codeforces.com/api/user.status?handle=${username}&from=1&count=100000000`)
+        fetch(`http://localhost:3000/contests/${username}/contestStats?days=${contestfilterDays}`),
+        fetch(`http://localhost:3000/problems/${username}/problemStats?days=${problemFilterDays}`)
       ])
       const ContestJson=await contestRes.json();
       const ProblemJson=await problemRes.json();
 
-      setLoading(false);
+      {/**the thing with backend stored data is that ContestJson and ProblemJson will be having all the data we want to display */}
+
       
-      setRawContestData(ContestJson.result);
-      setRawProblemData(ProblemJson.result);
+      setRawContestData(ContestJson);
+      setRawProblemData(ProblemJson);
+            setLoading(false);
+
     }catch(err){
       console.error("error:",err);
 
@@ -55,7 +58,7 @@ function IndividualStudent() {
 
   useEffect(()=>{
     fetchdata()
-  },[])
+  },[contestfilterDays,problemFilterDays])
 
 
   const handleChange=(event)=>{
@@ -66,22 +69,6 @@ function IndividualStudent() {
     }
 
   }
-
-
-  function filterdata(days,data){
-    {/**this function takes num of days as a parameter and return the filtered data accordingly */}
-    const curr_date=new Date();
-    const filterdays=curr_date-(days)*24*60*60*1000;
-
-    const filtered_data=data.filter((item)=>{
-      return (item.ratingUpdateTimeSeconds?item.ratingUpdateTimeSeconds:item.creationTimeSeconds)*1000>=filterdays
-    })
-
-    return filtered_data 
-    
-
-  }
-
   return (
     <div className='mx-12 mt-8 flex items-stretch font-mono space-x-12'>
 
@@ -89,14 +76,9 @@ function IndividualStudent() {
 
 
         <UserCard username={username}></UserCard>
-        {loading?
-            <Box sx={{ display: 'flex' }}>
-              <CircularProgress />
-            </Box>:
-            <>
-            <Stats stats={contestData} type={activeTab} filter_days={problemFilterDays}></Stats>
-            </>
-        }
+        <Stats stats={activeTab==="contest"?rawContestData:rawProblemData} type={activeTab} filter_days={problemFilterDays}></Stats>
+
+
         
 
         
@@ -112,7 +94,9 @@ function IndividualStudent() {
           </button>
           <button onClick={()=>setActiveTab("problem")}   className={`${activeTab === 'problem' ? ' text-blue-600 border-b-blue-600 border-b-2' : 'hover:text-black text-zinc-500'} px-2 py-1 font-medium transition cursor-pointer  `}>Problem Solving</button>
 
+
         </div>
+
           <select onChange={handleChange} className='rounded-md border-1 border-zinc-300 px-2 py-1 focus:ring-2 focus:ring-blue-500  mt-2 mr-5.5 text-sm' >
             <option value={activeTab==="contest"?30:7} >{activeTab==="contest"?'Last 30 days':'Last 7 days'}</option>
             <option value={activeTab==="contest"?90:30}>{activeTab==="contest"?'Last 90 days':'Last 30 days'}</option>
@@ -123,46 +107,21 @@ function IndividualStudent() {
 
 
         <div className='mt-4 text-sm '>
-
-
-          {/**here we send the selected filter as prop to the respecitve component! */}
-
-          {loading?
-               <Box sx={{ width: '100%' }}>
-                <LinearProgress />
-              </Box>:
-          ""
-          }
-
-          {activeTab==="contest" && rawContestData &&(
-            
-            <ContestData 
-            rawData={rawContestData} 
-            setContestData={setContestData}
-            filter_days={contestfilterDays}
-            filterdata={filterdata}
-            >
-            </ContestData>
+          {loading ? (
+            <div className="flex justify-center items-center h-[200px]">
+              <CircularProgress />
+            </div>
+          ) : (
+            <>
+              {activeTab === "contest" && rawContestData && (
+                <ContestData rawData={rawContestData} filter_days={contestfilterDays} />
+              )}
+              {activeTab === "problem" && rawProblemData && (
+                <ProblemData rawData={rawProblemData} filter_days={problemFilterDays} />
+              )}
+            </>
           )}
-          {activeTab==="problem" && rawProblemData &&(
-            <ProblemData
-            rawData={rawProblemData}
-            filter_days={problemFilterDays}
-            filterdata={filterdata}
-            setContestData={setContestData}
-            >
-
-            </ProblemData>
-          )
-            
-          }
-          
-
-
-
-
-
-        </div>
+</div>
 
 
 
@@ -268,72 +227,29 @@ function StatCard({ label, value, icon, valueClass }) {
 }
 
 function Stats({stats,type,filter_days}) {
-
-
-  const ratingChange=stats.map((item)=>item.newRating-item.oldRating);
-  const averageChange=(ratingChange.reduce((sum,val)=>sum+val,0))/stats.length
-
-  const problemsSolved=stats.filter((problem)=>problem.verdict==="OK");
-  const problemsMap=problemsSolved.reduce((freq,ele)=>{
-    freq[ele.problem.rating]=(freq[ele.problem.rating] || 0) + 1;
-    return freq
-  },{});
-
-  const removeUndefined=Object.entries(problemsMap).filter(([rating,num])=>{
-    return rating!=="undefined"
-  })
-
-  const maxProblemRating=removeUndefined.map((problem)=>problem[0]);
-
-
-
-
-  const averageProblemRating=removeUndefined.reduce((val,[rating,count])=>{
-    return val+parseInt(rating)*count;
-  },0)
-
-  const totalSolved=removeUndefined.reduce((val,[_,count])=>val+count,0);
-
-
-
   {/**problems Map gives us the eaxh rating to number of problems solved */};
-
-
-
+  if (!stats) {
+  return (
+    <div className="text-center text-sm text-gray-500">Loading stats...</div>
+  );
+}
 
   const numberData = type === "contest" 
-    ? stats.length 
-    : problemsSolved.length;
+    ? stats.contestsAttended
+    : stats.problemsSolved;
 
   const secondCard=type==="contest"?
-  Math.floor(averageChange):
-  Math.round((averageProblemRating/totalSolved)/100)*100
-  
-   
-
-
-
-
-
+  stats.averageChange:
+  stats.averageProblemRating
 
   const thirdCard=type==="contest"?
-  (Math.max(...ratingChange)>0?Math.max(...ratingChange):0):
-  (problemsSolved.length/filter_days).toFixed(1)
+  stats.bestRatingGain:
+  stats.averageProblemsPerDay
 
   const fourthCard=type==="contest"?
-  Math.min(...ratingChange)<0?Math.min(...ratingChange):0:
-  Math.max(...maxProblemRating)
+  stats.worstRatingDrop:
+  stats.maxDifficult
 
-  
-
-
-  
-
-
-
-
-  
-  
   return (
     <div className='grid grid-cols-2 gap-6'>
       <StatCard label={type==="contest"?"Contests Attended":"Problems Solved"} value={numberData} />
@@ -354,15 +270,13 @@ function Stats({stats,type,filter_days}) {
   );
 }
 
-function ContestData({rawData,filter_days,setContestData,filterdata}){
+function ContestData({rawData,filter_days}){
   const [tableData,setTableData]=useState([])
 
   
   useEffect(()=>{
     if(rawData){
-      const filtered=filterdata(filter_days,rawData)
-      setTableData(filtered);
-      setContestData(filtered)
+      setTableData(rawData.rawData);
     }
   },[filter_days,rawData])
 
@@ -408,22 +322,13 @@ function ContestData({rawData,filter_days,setContestData,filterdata}){
           <tr key={index} className='  '  >
             <td className='px-5 py-2 '>{item.contestName}</td>
             <td className='px-5 py-2'>{item.rank}</td>
-            <td className='px-5 py-2'>{item.newRating-item.oldRating}</td>
+            <td className='px-5 py-2'>{item.ratingChange}</td>
             <td className='px-5 py-2 font-bold'>{item.newRating}</td>
           </tr>
         ))}
       </tbody>
       </table>
     </div>
-
-
-
-    
-
-
-
-      
-
 
     </div>
 
@@ -433,60 +338,27 @@ function ContestData({rawData,filter_days,setContestData,filterdata}){
   );
 }
 
-function ProblemData({rawData,filterdata,filter_days,setContestData}){
-  const [problemData,setProblemData]=useState([]);
+function ProblemData({rawData,filter_days}){
+  const [problemData,setProblemData]=useState(null);
+  
+  {/**using the above mapped data, we can now create submission heatmap for the respective days */}
 
-
-    const submissionsData = new Map();
-
-    for (let submission of problemData) {
-      const date = new Date(submission.creationTimeSeconds * 1000);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1; 
-      const day = date.getDate();
-      const submissionKey = `${year}-${month}-${day}`;
-
- 
-      submissionsData.set(submissionKey, (submissionsData.get(submissionKey) || 0) + 1);
-
-    }
-
-    
-    {/**using the above mapped data, we can now create submission heatmap for the respective days */}
-
-
-
-  const problemsSolved=problemData.filter((item)=>{
-    {/**what if the user submits the same question 2 times???  */}
-    return item.verdict==='OK'
-  })
-
-
-  const problemsPerCategory=problemsSolved.reduce((freq,ele)=>{
-    freq[ele.problem.rating]=(freq[ele.problem.rating] || 0) + 1;
-
-    return freq;
-  },{}) 
-
-
-  const dataset = Object.entries(problemsPerCategory).map(([rating, value]) => ({
-    rating,
-    value,
-  }));
+  
 
   useEffect(()=>{
     if(rawData){
-      const filtered=filterdata(filter_days,rawData);
-      setProblemData(filtered)
-      setContestData(filtered)
+      setProblemData(rawData)
     }
   },[filter_days,rawData])
+
+  // Wait until data is loaded
+  if (!problemData) return null;
+
+  // Fallbacks to empty values if fields are missing
+  const submissionsData = problemData.submissionsData || {};
+  const dataset = problemData.problemsPerCategory || [];
+
   
-  
-
-
-
-
 
   return(
     <div className=''>
@@ -516,28 +388,14 @@ function ProblemData({rawData,filterdata,filter_days,setContestData}){
 
       </div>
       
-      <div className='mt-2 rounded-2xl border-1 border-zinc-400 p-3'>
-
+      {Object.keys(submissionsData).length > 0 && (
         <CalendarHeatmap
-        values={Array.from(submissionsData).map(([date,count])=>{
-          return {date,count};
-        })}
-        tooltipDataAttrs={value => {
-          return {
-            'data-tip': `${value.date} 
-            `,
-          };
-        }}
-        gutterSize={5}
-        
-
-
-
-        
-
+          values={Object.entries(submissionsData).map(([date, count]) => ({ date, count }))}
+          tooltipDataAttrs={value => ({ 'data-tip': `${value.date}: ${value.count} submissions` })}
+          gutterSize={5}
         />
-        <ReactTooltip />
-      </div>
+      )}
+
 
 
 
